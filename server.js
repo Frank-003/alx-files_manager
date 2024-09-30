@@ -1,15 +1,34 @@
-import express from 'express';
-import controllerRouting from './routes/index';
-
+const express = require('express');
 const app = express();
 const port = process.env.PORT || 5000;
+const redisClient = require('./utils/redis');
+const dbClient = require('./utils/db');
 
-app.use(express.json());
+// Load routes
+app.use('/', require('./routes/index'));
 
-controllerRouting(app);
+// App status endpoint
+app.get('/status', async (req, res) => {
+  const redisAlive = redisClient.isAlive();
+  const dbAlive = dbClient.isAlive();
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  res.status(200).json({
+    redis: redisAlive,
+    db: dbAlive,
+  });
 });
 
-export default app;
+// App stats endpoint
+app.get('/stats', async (req, res) => {
+  const nbUsers = await dbClient.nbUsers();
+  const nbFiles = await dbClient.nbFiles();
+
+  res.status(200).json({
+    users: nbUsers,
+    files: nbFiles,
+  });
+});
+
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
+});
